@@ -40,7 +40,7 @@ function renderOrders(){
  const shown=orders.filter(o=>(!filter||o.status===filter)&&(!query||[o.order_number,o.brand_name,o.customer_name,o.profile.full_name,o.profile.phone,o.platform,o.brief].some(v=>String(v||"").toLowerCase().includes(query))));
  if(!shown.length){$("orders").innerHTML='<div class="empty">Tidak ada pesanan yang cocok dengan filter.</div>';return}
  $("orders").innerHTML=shown.map(o=>{
- const opts=statuses.filter(s=>s!=="paid").map(s=>'<option value="'+s+'" '+(o.status===s?"selected":"")+'>'+labels[s]+'</option>').join("");
+ const opts=statuses.map(s=>'<option value="'+s+'" '+(o.status===s?"selected ":"")+(s==="paid"&&o.status!=="paid"?"disabled":"")+'>'+labels[s]+'</option>').join("");
  return '<article class="order-card" data-card="'+esc(o.id)+'"><div class="order-head"><strong>'+esc(o.order_number)+'</strong><span class="pill">'+esc(labels[o.status]||o.status)+'</span></div><p class="order-meta"><b>'+esc(o.customer_name||o.profile.full_name||"Pelanggan")+'</b> · '+esc(o.profile.phone||o.customer_phone||"No. telepon belum ada")+' · '+esc(o.platform||"-")+'</p><p class="order-meta">'+esc(o.package_name||"Layanan custom")+' · '+esc(date(o.submitted_at))+'</p><div class="order-brief">'+esc(o.brief)+'</div><div class="order-grid"><label>Status<select data-status="'+esc(o.id)+'">'+opts+'</select></label><label>Penawaran (Rupiah)<input data-quote="'+esc(o.id)+'" type="number" min="1" step="1" value="'+(o.quoted_amount??"")+'" placeholder="Nominal Rupiah"></label><label class="wide">Catatan untuk pelanggan<textarea data-note="'+esc(o.id)+'" rows="2" maxlength="2000">'+esc(o.admin_notes||"")+'</textarea></label></div><div class="order-actions"><button class="primary" data-save="'+esc(o.id)+'">Simpan perubahan</button>'+(o.status==="awaiting_payment"||o.status==="paid"?'<button class="secondary" data-payment="'+esc(o.id)+'">Periksa pembayaran Midtrans</button>':"")+'</div><div class="history">Dikirim: '+esc(date(o.created_at))+' · ID pelanggan: '+esc(o.customer_id)+'</div></article>';
  }).join("");
  document.querySelectorAll("[data-save]").forEach(b=>b.addEventListener("click",()=>saveOrder(b.dataset.save,b)));
@@ -56,7 +56,7 @@ async function saveOrder(id,button){
  if(status==="paid"&&old.status!=="paid"){alert("Status pembayaran tidak dapat ditetapkan manual. Gunakan pemeriksaan Midtrans.");return}
  if(status==="paid")return;
  button.disabled=true;button.textContent="Menyimpan...";
- const {error}=await db.from("orders").update({status,quoted_amount:quote,admin_notes:note}).eq("id",id);
+ const safeStatus=old.status==="paid"?"paid":status;\n const {error}=await db.from("orders").update({status:safeStatus,quoted_amount:quote,admin_notes:note}).eq("id",id);
  if(error){button.disabled=false;button.textContent="Simpan perubahan";alert("Gagal menyimpan: "+error.message);return}
  if(status!==old.status||note!==old.admin_notes){
   const eventMessage=note!==old.admin_notes?note:"Status diperbarui menjadi "+labels[status];
