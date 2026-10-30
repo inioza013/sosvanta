@@ -78,12 +78,19 @@
     <section class="section wrap about-section" id="tentang"><div class="about-visual"><div class="about-orb"><span>S</span></div><div class="about-stamp">STRATEGY<br>× CREATIVITY<br>× IMPACT</div></div><div class="about-copy"><div class="eyebrow"><span></span> THE SOSVANTA APPROACH</div><h2>Bukan sekadar angka.<br><em>Bangun nilai.</em></h2><p>SOSVANTA hadir sebagai partner pertumbuhan digital bagi bisnis, personal brand, dan kreator. Kami percaya pengaruh yang kuat dibangun dari pesan yang tepat, konten yang bernilai, dan hubungan yang autentik dengan audiens.</p><ul><li><span>✓</span> Strategi disesuaikan dengan tujuan brand</li><li><span>✓</span> Ruang lingkup dan biaya dibahas di awal</li><li><span>✓</span> Mengutamakan metode promosi yang wajar dan sesuai kebijakan platform</li><li><span>✓</span> Evaluasi berdasarkan pekerjaan dan data campaign</li></ul></div></section>
 
     <section class="cta-section" id="mulai"><div class="wrap cta-wrap"><div><div class="eyebrow"><span></span> LET'S BUILD SOMETHING</div><h2>Siap membawa brand<br>Anda <em>bertumbuh?</em></h2><p>Ceritakan kebutuhan Anda. Susun brief singkat untuk memulai pembicaraan dengan tim SOSVANTA.</p></div>
-      <form id="briefForm" class="brief-card"><label for="name">Nama / Brand</label><input id="name" name="name" placeholder="Nama Anda atau bisnis" required>
+      <form id="briefForm" class="brief-card"><div class="account-box">
+        <div class="account-heading">AKUN PELANGGAN <span>ORDER TRACKING</span></div>
+        <p class="account-intro">Daftar atau masuk untuk menyimpan pesanan dan melihat statusnya.</p>
+        <label for="accountEmail">Email</label><input id="accountEmail" type="email" autocomplete="email" placeholder="email@contoh.com">
+        <label for="accountPassword">Password</label><input id="accountPassword" type="password" autocomplete="current-password" minlength="8" placeholder="Minimal 8 karakter">
+        <div class="account-actions"><button class="button account-button" id="signInButton" type="button">Masuk</button><button class="button account-button account-button-alt" id="signUpButton" type="button">Buat akun</button><button class="copy-button" id="signOutButton" type="button" hidden>Keluar</button></div>
+        <p id="authStatus" class="auth-status" aria-live="polite">Silakan masuk atau buat akun sebelum mengirim pesanan.</p>
+      </div><label for="name">Nama / Brand</label><input id="name" name="name" placeholder="Nama Anda atau bisnis" required>
         <label for="platform">Platform utama</label><select id="platform" name="platform" required><option value="">Pilih platform</option><option>Instagram</option><option>TikTok</option><option>Instagram & TikTok</option></select>
         <label for="package">Paket / harga yang diminati</label><select id="package" name="package" required><option value="">Pilih paket atau layanan</option><option>Social Media Starter — Rp1.490.000/bulan</option><option>Social Media Growth — Rp3.490.000/bulan</option><option>Social Media Pro — Rp6.490.000/bulan</option><option>Audit & optimasi profil — Rp299.000</option><option>5 desain konten — Rp499.000</option><option>5 edit video pendek — Rp999.000</option><option>Strategi konten — Rp499.000</option><option>Ads Management — mulai Rp750.000/bulan</option><option>Creator Campaign Management — mulai Rp1.500.000/proyek</option><option>Konsultasi / custom</option></select>\n        <label for="service">Layanan yang dibutuhkan</label><select id="service" name="service" required><option value="">Pilih kebutuhan</option><option>Social Media Strategy</option><option>Content Creation</option><option>Instagram Growth</option><option>TikTok Growth</option><option>Ads Management</option><option>Creator Campaign</option><option>Belum yakin — perlu konsultasi</option></select>
         <label for="goal">Ceritakan tujuan Anda</label><textarea id="goal" name="goal" rows="3" placeholder="Contoh: ingin meningkatkan jangkauan brand dan mendapatkan audiens yang relevan..." required></textarea>
         <button class="button button-primary submit-button" type="submit">Kirim brief via WhatsApp <span>↗</span></button>
-        <p class="form-note">Setelah dikirim, WhatsApp akan terbuka dengan brief yang sudah terisi. Pesanan belum tercatat otomatis di dashboard.</p>
+        <p class="form-note">Pesanan disimpan ke akun Anda setelah berhasil dikirim. WhatsApp juga akan terbuka untuk komunikasi dengan tim SOSVANTA.</p>
         <div id="briefResult" class="brief-result" hidden><strong>Brief Anda siap.</strong><p id="briefText"></p><button class="copy-button" type="button" id="copyBrief">Salin brief</button><span id="copyStatus" aria-live="polite"></span></div>
       </form>
     </div></section>
@@ -98,6 +105,7 @@
     </section>
   </main>
   <footer><div class="wrap footer-main"><a class="brand" href="#home"><img class="brand-mark-image" src="assets/sosvanta-logo.png" alt=""><span>SOSVANTA<span class="brand-dot">.</span><small> SOCIAL GROWTH STUDIO</small></span></a><p>Social Growth. Real Influence.</p><div class="footer-contacts"><a href="https://wa.me/62895328696545" target="_blank" rel="noopener">WhatsApp: 0895-3286-96545 ↗</a><a href="https://instagram.com/sosvanta" target="_blank" rel="noopener">Instagram: @sosvanta ↗</a></div><a class="back-top" href="#home">Kembali ke atas ↑</a></div><div class="wrap footer-bottom"><span>© <span id="year"></span> SOSVANTA. All rights reserved.</span><span>Growth with purpose.</span></div></footer>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
 </body>
 </html>
