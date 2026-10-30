@@ -53,6 +53,18 @@ Deno.serve(async (req) => {
     return json({ error: "Nominal penawaran belum valid. Hubungi admin SOSVANTA." }, 409);
   }
 
+  // Prevent repeated clicks from creating multiple invoices for one order.
+  const { data: existingPayments, error: existingError } = await admin.from("payments")
+    .select("id,status,redirect_url,provider_order_id")
+    .eq("order_id", order.id).eq("provider", "midtrans")
+    .in("status", ["pending", "paid"]).order("created_at", { ascending: false }).limit(10);
+  if (existingError) return json({ error: "Gagal memeriksa tagihan sebelumnya." }, 500);
+  const existingPaid = existingPayments?.find((p) => p.status === "paid");
+  if (existingPaid) return json({ error: "Pesanan ini sudah dibayar. Silakan muat ulang dashboard." }, 409);
+  const reusable = existingPayments?.find((p) => p.status === "pending" && p.redirect_url);
+  if (reusable) return json({ payment_url: reusable.redirect_url, order_number: order.order_number, reused: true });
+  if (existingPayments?.some((p) => p.status === "pending")) return json({ error: "Tagihan sebelumnya masih diproses. Hubungi admin untuk pemeriksaan." }, 409);
+
   const providerOrderId = "SV-" + crypto.randomUUID();
   const { data: payment, error: paymentError } = await admin.from("payments").insert({
     order_id: order.id,
