@@ -9,3 +9,19 @@
 
 /* Launch pricing */
 .pricing-section{padding-top:105px;padding-bottom:105px}.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}.price-card{position:relative;background:#fff;border:1px solid #dfe9e1;padding:30px 25px;display:flex;flex-direction:column;min-height:490px}.price-card.featured{border:1px solid #438b68;box-shadow:0 18px 42px #153e2b16}.popular-label{position:absolute;right:18px;top:0;background:#1c5439;color:#d6f8e5;font-size:8px;font-weight:800;letter-spacing:.14em;padding:8px 11px}.price-kicker{font-size:9px;font-weight:800;letter-spacing:.16em;color:#679078}.price-card h3{font:800 21px Manrope;color:#183326;margin:18px 0 8px}.price-desc{font-size:12px;line-height:1.7;color:#78867d;min-height:42px;margin:0}.price-amount{font:800 clamp(22px,2.3vw,29px) Manrope;color:#1b5037;margin:23px 0 18px;letter-spacing:-.04em}.price-amount small{font:500 11px "DM Sans";letter-spacing:0;color:#819087}.price-card ul{list-style:none;padding:18px 0 22px;margin:0;border-top:1px solid #e6eee7;display:grid;gap:12px;flex:1}.price-card li{font-size:11px;line-height:1.5;color:#526459}.price-card li:before{content:"✓";color:#33865b;font-weight:800;margin-right:9px}.price-button{width:100%;border:1px solid #9bbca6;background:#f5faf6;color:#24553a;margin-top:auto}.price-button span{color:#32825a}.price-button:hover{background:#e8f5ec}.pricing-footnote{font-size:10px;line-height:1.8;color:#78877e;margin:18px 0 55px}.add-on-panel{background:#eaf2eb;padding:30px 34px;display:grid;grid-template-columns:.7fr 1.3fr;gap:20px 45px;align-items:start}.add-on-panel h3{font:800 22px Manrope;color:#193b29;margin:13px 0}.addon-list{display:grid;grid-template-columns:1fr 1fr;gap:0 25px}.addon-list>div{padding:12px 0;border-bottom:1px solid #d3e2d6;display:flex;flex-direction:column;gap:5px}.addon-list span{font-size:11px;color:#607267}.addon-list b{font:800 13px Manrope;color:#245a3c}.add-on-panel>p{grid-column:2;font-size:10px;color:#7b8980;margin:0;line-height:1.7}@media(max-width:850px){.pricing-grid{grid-template-columns:1fr 1fr}.price-card:last-child{grid-column:1/-1}.add-on-panel{grid-template-columns:1fr;gap:10px}.add-on-panel>p{grid-column:1}}@media(max-width:620px){.pricing-grid{grid-template-columns:1fr}.price-card:last-child{grid-column:auto}.price-card{min-height:0;padding:25px 22px}.pricing-section{padding-top:75px;padding-bottom:75px}.addon-list{grid-template-columns:1fr}.add-on-panel{padding:24px 20px}}
+
+
+/* Customer account and authentication */
+.account-box{background:#f0f6f1;border:1px solid #d5e4d8;padding:17px;margin-bottom:22px}
+.account-heading{font:800 11px Manrope;color:#214b35;letter-spacing:.12em;display:flex;justify-content:space-between;gap:10px}
+.account-heading span{font:700 8px "DM Sans";color:#6b8b76}
+.account-intro{font-size:10px;color:#718078;line-height:1.6;margin:8px 0 13px}
+.account-box label{display:block;font-size:10px;font-weight:700;color:#3c5445;margin:10px 0 6px}
+.account-box input{width:100%;border:1px solid #dce5de;background:#fff;padding:11px 12px;font:12px "DM Sans";color:#24392c;border-radius:3px;outline:none}
+.account-box input:focus{border-color:#6fb28c}
+.account-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.account-button{padding:9px 14px;font-size:10px;background:#1b5037;color:white;border:1px solid #1b5037}
+.account-button-alt{background:transparent;color:#24553a}
+.auth-status{font-size:10px;line-height:1.6;color:#386c4a;margin:10px 0 0}
+.auth-status.is-error{color:#a33b35}
+.account-box button:disabled{opacity:.55;cursor:wait}
