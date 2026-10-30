@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
   if (!statusResponse.ok) return json({ error: "Could not verify transaction status with Midtrans" }, 503);
   const current = await statusResponse.json();
   const canonicalAmount = Number(current.gross_amount);
-  if (!Number.isFinite(canonicalAmount) || canonicalAmount !== Number(payment.amount)) {
+  if (String(current.order_id ?? "") !== orderId || !Number.isFinite(canonicalAmount) || canonicalAmount !== Number(payment.amount)) {
     return json({ error: "Payment amount mismatch" }, 409);
   }
 
@@ -66,6 +66,8 @@ Deno.serve(async (req) => {
   else if (transactionStatus === "deny" || transactionStatus === "failure") nextPaymentStatus = "failed";
   else if (transactionStatus === "refund" || transactionStatus === "partial_refund") nextPaymentStatus = "refunded";
 
+  // Do not let delayed pending/failed notifications downgrade a confirmed settlement.
+  if (payment.status === "paid" && !["paid", "refunded"].includes(nextPaymentStatus)) nextPaymentStatus = "paid";
   const { error: updatePaymentError } = await admin.from("payments").update({
     status: nextPaymentStatus,
     provider_reference: current.transaction_id ? String(current.transaction_id) : null,
