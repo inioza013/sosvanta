@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.midtrans-reconcile-payments]
 verify_jwt = false
+
+[functions.midtrans-check-payment]
+verify_jwt = false
