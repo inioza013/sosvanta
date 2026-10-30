@@ -22,6 +22,7 @@ const signInButton=document.getElementById("signInButton");
 const signUpButton=document.getElementById("signUpButton");
 const signOutButton=document.getElementById("signOutButton");
 let currentUser=null;
+let customerRefreshTimer=null;
 
 function showAuthStatus(message,isError=false){
   authStatus.textContent=message;
@@ -85,12 +86,15 @@ const statusLabels={submitted:"Pesanan diterima",under_review:"Sedang ditinjau",
 const adminStatuses=Object.keys(statusLabels);
 function escapeHTML(value){return String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));}
 function formatDate(value){return new Intl.DateTimeFormat("id-ID",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value));}
-async function refreshOrders(){
- if(!currentUser){orderDashboard.hidden=true;return;}
- orderDashboard.hidden=false;ordersList.innerHTML='<p class="empty-orders">Memuat pesanan...</p>';
+async function refreshOrders(silent=false){
+ if(!currentUser){orderDashboard.hidden=true;if(customerRefreshTimer){clearInterval(customerRefreshTimer);customerRefreshTimer=null;}return;}
+ orderDashboard.hidden=false;
+ if(!silent) ordersList.innerHTML='<p class="empty-orders">Memuat pesanan...</p>';
  const {data:profile,error:profileError}=await supabaseClient.from("profiles").select("role").eq("id",currentUser.id).single();
  if(profileError){ordersList.textContent="Tidak dapat membaca profil: "+profileError.message;return;}
  const isAdmin=profile.role==="admin";
+ if(customerRefreshTimer){clearInterval(customerRefreshTimer);customerRefreshTimer=null;}
+ if(!isAdmin) customerRefreshTimer=setInterval(()=>{if(currentUser&&!document.hidden) refreshOrders(true);},20000);
  dashboardRole.textContent=isAdmin?"ADMIN":"PELANGGAN";
  dashboardIntro.textContent=isAdmin?"Pantau seluruh pesanan pelanggan dan perbarui status pengerjaan.":"Berikut riwayat dan perkembangan pesanan Anda.";
  const {data:orders,error}=await supabaseClient.from("orders").select("id,order_number,customer_id,package_name,platform,brand_name,customer_name,customer_phone,brief,status,submitted_at,admin_notes,quoted_amount,currency").order("created_at",{ascending:false}).limit(100);
