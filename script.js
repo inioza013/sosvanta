@@ -26,6 +26,7 @@ form.addEventListener("submit",event=>{
     "BRIEF KONSULTASI SOSVANTA",
     "Nama/Brand: "+data.get("name"),
     "Platform: "+data.get("platform"),
+    "Paket/Harga: "+data.get("package"),
     "Kebutuhan: "+data.get("service"),
     "Tujuan: "+data.get("goal"),
     "",
@@ -48,3 +49,11 @@ document.getElementById("copyBrief").addEventListener("click",async()=>{
     status.textContent=" Silakan salin teks brief secara manual.";
   }
 });
+
+document.querySelectorAll("[data-package]").forEach(button=>button.addEventListener("click",()=>{
+  const packageSelect=document.getElementById("package");
+  const option=[...packageSelect.options].find(item=>item.text===button.dataset.package);
+  if(option) packageSelect.value=option.value;
+  document.getElementById("mulai").scrollIntoView({behavior:"smooth"});
+  packageSelect.focus({preventScroll:true});
+}));
