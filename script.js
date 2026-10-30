@@ -180,6 +180,7 @@ async function refreshOrders(silent=false){
   const quoteAmount=rawQuote===""?null:Number(rawQuote);
   if(rawQuote!==""&&(!Number.isSafeInteger(quoteAmount)||quoteAmount<1)){alert("Nominal penawaran harus berupa angka Rupiah bulat lebih dari 0.");return;}
   if((next==="awaiting_payment"||next==="paid")&&(!Number.isSafeInteger(quoteAmount)||quoteAmount<1)){alert("Isi nominal penawaran terlebih dahulu sebelum mengubah status menjadi menunggu pembayaran atau pembayaran diterima.");quoteInput.focus();return;}
+  if(next==="paid"&&old.status!=="paid"){alert("Status Pembayaran diterima tidak dapat ditetapkan secara manual. Gunakan pemeriksaan Midtrans setelah pembayaran terverifikasi.");select.value=old.status;return;}
   button.disabled=true;
   button.textContent="Menyimpan...";
   const {error:updateError}=await supabaseClient.from("orders").update({status:next,quoted_amount:quoteAmount,admin_notes:note.value.trim()}).eq("id",id);
