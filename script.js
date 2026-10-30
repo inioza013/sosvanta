@@ -34,7 +34,7 @@ function renderAuth(user){
   signOutButton.hidden=!user;
   authEmail.disabled=!!user;
   authPassword.disabled=!!user;
-  if(user) showAuthStatus("Masuk sebagai "+user.email+". Anda dapat mengirim pesanan.");
+  if(user){showAuthStatus("Masuk sebagai "+user.email+". Anda dapat mengirim pesanan.");refreshOrders();}else{orderDashboard.hidden=true;}
 }
 async function loadSession(){
   const {data,error}=await supabaseClient.auth.getSession();
@@ -76,7 +76,43 @@ signOutButton.addEventListener("click",async()=>{
 supabaseClient.auth.onAuthStateChange((_event,session)=>renderAuth(session?.user||null));
 loadSession();
 
-const form=document.getElementById("briefForm");
+
+const orderDashboard=document.getElementById("orderDashboard");
+const ordersList=document.getElementById("ordersList");
+const dashboardRole=document.getElementById("dashboardRole");
+const dashboardIntro=document.getElementById("dashboardIntro");
+const statusLabels={submitted:"Pesanan diterima",under_review:"Sedang ditinjau",quoted:"Penawaran dikirim",awaiting_payment:"Menunggu pembayaran",paid:"Pembayaran diterima",in_progress:"Sedang dikerjakan",revision:"Menunggu revisi",completed:"Selesai",cancelled:"Dibatalkan",rejected:"Ditolak"};
+const adminStatuses=Object.keys(statusLabels);
+function escapeHTML(value){return String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));}
+function formatDate(value){return new Intl.DateTimeFormat("id-ID",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value));}
+async function refreshOrders(){
+ if(!currentUser){orderDashboard.hidden=true;return;}
+ orderDashboard.hidden=false;ordersList.innerHTML='<p class="empty-orders">Memuat pesanan...</p>';
+ const {data:profile,error:profileError}=await supabaseClient.from("profiles").select("role").eq("id",currentUser.id).single();
+ if(profileError){ordersList.textContent="Tidak dapat membaca profil: "+profileError.message;return;}
+ const isAdmin=profile.role==="admin";
+ dashboardRole.textContent=isAdmin?"ADMIN":"PELANGGAN";
+ dashboardIntro.textContent=isAdmin?"Pantau seluruh pesanan pelanggan dan perbarui status pengerjaan.":"Berikut riwayat dan perkembangan pesanan Anda.";
+ const {data:orders,error}=await supabaseClient.from("orders").select("id,order_number,customer_id,package_name,platform,brand_name,customer_name,customer_phone,brief,status,submitted_at,admin_notes").order("created_at",{ascending:false}).limit(100);
+ if(error){ordersList.textContent="Gagal memuat pesanan: "+error.message;return;}
+ if(!orders?.length){ordersList.innerHTML='<p class="empty-orders">Belum ada pesanan. Isi formulir di bawah untuk memulai.</p>';return;}
+ ordersList.innerHTML=orders.map(order=>{
+  const customerInfo=isAdmin?'<p class="order-meta">Pelanggan: '+escapeHTML(order.customer_name)+'</p>':"";
+  const note=!isAdmin&&order.admin_notes?'<p class="order-admin-note"><b>Catatan SOSVANTA:</b> '+escapeHTML(order.admin_notes)+'</p>':"";
+  const controls=isAdmin?'<div class="admin-order-controls"><label>Status<select class="order-status-select" data-order="'+escapeHTML(order.id)+'">'+adminStatuses.map(s=>'<option value="'+s+'" '+(order.status===s?"selected":"")+'>'+statusLabels[s]+'</option>').join("")+'</select></label><label>Catatan admin<textarea class="admin-note-input" data-note="'+escapeHTML(order.id)+'" rows="2">'+escapeHTML(order.admin_notes||"")+'</textarea></label><button type="button" class="copy-button save-order-button" data-save-order="'+escapeHTML(order.id)+'">Simpan perubahan</button></div>':"";
+  return '<article class="order-card"><div class="order-card-head"><strong>'+escapeHTML(order.order_number)+'</strong><span class="order-status">'+escapeHTML(statusLabels[order.status]||order.status)+'</span></div>'+customerInfo+'<p class="order-meta">'+escapeHTML(order.package_name||"Layanan custom")+' · '+escapeHTML(order.platform||"-")+'</p><p class="order-meta">Dikirim: '+escapeHTML(formatDate(order.submitted_at))+'</p><p class="order-brief">'+escapeHTML(order.brief)+'</p>'+note+controls+'</article>';
+ }).join("");
+ if(isAdmin) ordersList.querySelectorAll("[data-save-order]").forEach(button=>button.addEventListener("click",async()=>{
+  const id=button.dataset.saveOrder;const select=ordersList.querySelector('[data-order="'+id+'"]');const note=ordersList.querySelector('[data-note="'+id+'"]');const old=orders.find(o=>o.id===id);const next=select.value;
+  button.disabled=true;button.textContent="Menyimpan...";
+  const {error:updateError}=await supabaseClient.from("orders").update({status:next,admin_notes:note.value.trim()}).eq("id",id);
+  if(updateError){button.disabled=false;button.textContent="Simpan perubahan";alert("Gagal memperbarui: "+updateError.message);return;}
+  if(old.status!==next){const {error:eventError}=await supabaseClient.from("order_events").insert({order_id:id,actor_id:currentUser.id,old_status:old.status,new_status:next,message:"Status diperbarui menjadi: "+statusLabels[next],is_customer_visible:true});if(eventError) alert("Status tersimpan, tetapi riwayat status gagal dicatat: "+eventError.message);}
+  await refreshOrders();
+ }));
+}
+document.getElementById("refreshOrders").addEventListener("click",refreshOrders);
+\nconst form=document.getElementById("briefForm");
 const result=document.getElementById("briefResult");
 const briefText=document.getElementById("briefText");
 const copyStatus=document.getElementById("copyStatus");
@@ -132,7 +168,7 @@ form.addEventListener("submit",async event=>{
   briefText.textContent=brief;
   result.hidden=false;
   copyStatus.textContent="";
-  showAuthStatus("Pesanan "+order.order_number+" berhasil disimpan. WhatsApp akan dibuka untuk tindak lanjut.");
+  showAuthStatus("Pesanan "+order.order_number+" berhasil disimpan. WhatsApp akan dibuka untuk tindak lanjut.");\n  await refreshOrders();
   result.scrollIntoView({behavior:"smooth",block:"nearest"});
   const whatsappUrl="https://wa.me/62895328696545?text="+encodeURIComponent(brief);
   window.open(whatsappUrl,"_blank","noopener,noreferrer");
