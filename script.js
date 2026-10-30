@@ -112,7 +112,8 @@ async function refreshOrders(){
  }));
 }
 document.getElementById("refreshOrders").addEventListener("click",refreshOrders);
-\nconst form=document.getElementById("briefForm");
+
+const form=document.getElementById("briefForm");
 const result=document.getElementById("briefResult");
 const briefText=document.getElementById("briefText");
 const copyStatus=document.getElementById("copyStatus");
@@ -168,7 +169,8 @@ form.addEventListener("submit",async event=>{
   briefText.textContent=brief;
   result.hidden=false;
   copyStatus.textContent="";
-  showAuthStatus("Pesanan "+order.order_number+" berhasil disimpan. WhatsApp akan dibuka untuk tindak lanjut.");\n  await refreshOrders();
+  showAuthStatus("Pesanan "+order.order_number+" berhasil disimpan. WhatsApp akan dibuka untuk tindak lanjut.");
+  await refreshOrders();
   result.scrollIntoView({behavior:"smooth",block:"nearest"});
   const whatsappUrl="https://wa.me/62895328696545?text="+encodeURIComponent(brief);
   window.open(whatsappUrl,"_blank","noopener,noreferrer");
