@@ -153,8 +153,16 @@ async function refreshOrders(){
   button.disabled=false;
   button.textContent="Rekonsiliasi pembayaran Midtrans (semua transaksi)";
   if(error||!data){alert("Rekonsiliasi gagal: "+(data?.error||error?.message||"Kesalahan tidak diketahui"));return;}
-  const lines=(data.results||[]).map(item=>item.provider_order_id+": "+item.result).join("\n");
-  alert("Hasil pemeriksaan Midtrans:\n"+lines+"\nTransaksi Settlement: "+data.settled_count+"\nStatus pesanan: "+data.order_status);
+  const lines=(data.results||[]).map(item=>{
+    let line=(item.provider_order_id||"-")+": "+item.result;
+    if(item.mismatch_reasons?.length){
+      line+="\n  Penyebab: "+item.mismatch_reasons.join(", ");
+      if(item.expected) line+="\n  Data SOSVANTA: Order ID "+item.expected.order_id+" | Nominal Rp"+Number(item.expected.amount).toLocaleString("id-ID");
+      if(item.received) line+="\n  Data Midtrans: Order ID "+(item.received.order_id||"-")+" | Nominal Rp"+(item.received.amount??"-")+" | Status "+(item.received.transaction_status||"-")+" | Transaction ID "+(item.received.transaction_id||"-");
+    }
+    return line;
+  }).join("\n\n");
+  alert("Hasil pemeriksaan Midtrans:\n"+lines+"\n\nTransaksi Settlement: "+data.settled_count+"\nStatus pesanan: "+data.order_status);
   await refreshOrders();
  }));
  if(isAdmin) ordersList.querySelectorAll("[data-save-order]").forEach(button=>button.addEventListener("click",async()=>{
