@@ -195,7 +195,7 @@ async function refreshOrders(silent=false){
   await refreshOrders();
  }));
 }
-document.getElementById("refreshOrders").addEventListener("click",refreshOrders);
+document.getElementById("refreshOrders").addEventListener("click",()=>refreshOrders(false));
 
 const form=document.getElementById("briefForm");
 const result=document.getElementById("briefResult");
