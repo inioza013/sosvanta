@@ -94,10 +94,27 @@ Deno.serve(async (req) => {
     }),
   });
 
-  const snap = await snapResponse.json().catch(() => ({}));
+  const snapText = await snapResponse.text();
+  let snap: Record<string, unknown> = {};
+  try { snap = JSON.parse(snapText); } catch { snap = { raw_response: snapText.slice(0, 1000) }; }
   if (!snapResponse.ok || !snap.token || !snap.redirect_url) {
+    // Log provider diagnostics only; never log credentials or Authorization headers.
+    console.error("Midtrans Snap create transaction failed", {
+      http_status: snapResponse.status,
+      provider_status_code: snap.status_code ?? null,
+      provider_status_message: snap.status_message ?? null,
+      provider_response: snap,
+    });
     await admin.from("payments").delete().eq("id", payment.id);
-    return json({ error: "Midtrans belum dapat membuat tagihan. Silakan hubungi admin." }, 502);
+    const providerMessage = typeof snap.status_message === "string"
+      ? snap.status_message
+      : "Midtrans tidak mengembalikan token dan redirect URL.";
+    return json({
+      error: "Midtrans menolak pembuatan tagihan.",
+      provider_http_status: snapResponse.status,
+      provider_status_code: snap.status_code ?? null,
+      provider_message: providerMessage,
+    }, 502);
   }
 
   const { error: saveError } = await admin.from("payments").update({
