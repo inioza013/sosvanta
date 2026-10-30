@@ -68,6 +68,9 @@ Deno.serve(async (req) => {
   else if (tx === "deny" || tx === "failure") next = "failed";
   else if (tx === "refund" || tx === "partial_refund") next = "refunded";
 
+  // A stale/non-terminal provider response must never downgrade a confirmed payment.
+  if (payment.status === "paid" && !["paid", "refunded"].includes(next)) next = "paid";
+
   const update: Record<string, unknown> = {
     status: next,
     raw_notification: {
