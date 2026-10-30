@@ -35,3 +35,24 @@ These require additional database policies, server-side validation, and security
 - Do not add a paid payment gateway, paid supplier, paid domain, or paid hosting without explicit approval.
 - A zero-cost MVP can accept and track service requests; it cannot promise free payment processing, free supplier fulfillment, or unlimited scale.
 - Never put Supabase service-role keys, payment secrets, supplier API keys, or webhook secrets in browser JavaScript or public repository files.
+
+## Stage 2 — admin workspace
+- Open `admin.html`; the page must deny access to customer-role accounts.
+- Confirm an admin-role account can see all orders and customer profile details.
+- Filter orders by status and search by order number or brand.
+- Update an order to under review, set a quote, and add a customer-visible note.
+- Set a quote and move an order to awaiting payment; verify the customer sees the quote and payment action.
+- Confirm the admin UI cannot manually mark an unpaid order as paid.
+- Confirm paid orders have locked status and quote controls; payment status must come from Midtrans verification only.
+- Verify order status/note/quote changes are recorded in `order_events`.
+- Add a test service, verify it appears in the customer catalogue, then deactivate it and verify it disappears.
+- Test a non-admin account against direct `admin.html` access; it must not reveal order or service data.
+
+## Admin setup requirement
+The admin page uses the existing `profiles.role` authorization check. To authorize the owner's account, first register and confirm the account, then copy its Auth user UUID from Supabase Dashboard > Authentication > Users. Run the following in Supabase SQL Editor after replacing the placeholder:
+```sql
+update public.profiles
+set role = 'admin'
+where id = 'PASTE_AUTH_USER_UUID_HERE';
+```
+Never put the service-role key in a browser file. Do not share passwords or private API keys in chat.
