@@ -100,9 +100,33 @@ async function refreshOrders(){
   const customerInfo=isAdmin?'<p class="order-meta">Pelanggan: '+escapeHTML(order.customer_name)+'</p>':"";
   const quote=!isAdmin&&order.quoted_amount!==null&&order.quoted_amount!==undefined?'<p class="order-quote"><b>Penawaran SOSVANTA:</b> '+new Intl.NumberFormat("id-ID",{style:"currency",currency:order.currency||"IDR",maximumFractionDigits:0}).format(Number(order.quoted_amount))+(order.status==="awaiting_payment"?" · Menunggu pembayaran":"")+"</p>":"";
   const note=!isAdmin&&order.admin_notes?'<p class="order-admin-note"><b>Catatan SOSVANTA:</b> '+escapeHTML(order.admin_notes)+'</p>':"";
+  const paymentAction=!isAdmin&&order.status==="awaiting_payment"?'<div class="customer-payment-action"><button type="button" class="button button-primary customer-pay-button" data-pay-order="'+escapeHTML(order.id)+'">Bayar via Midtrans <span>↗</span></button><p class="payment-hint">Pembayaran akan dibuka melalui halaman aman Midtrans.</p></div>':"";
   const controls=isAdmin?'<div class="admin-order-controls"><label>Status<select class="order-status-select" data-order="'+escapeHTML(order.id)+'">'+adminStatuses.map(s=>'<option value="'+s+'" '+(order.status===s?"selected":"")+'>'+statusLabels[s]+'</option>').join("")+'</select></label><label>Nominal penawaran (Rupiah)<input class="admin-quote-input" data-quote="'+escapeHTML(order.id)+'" type="number" min="1" step="1" inputmode="numeric" placeholder="Contoh: 1490000" value="'+(order.quoted_amount??"")+'"></label><label>Catatan admin<textarea class="admin-note-input" data-note="'+escapeHTML(order.id)+'" rows="2">'+escapeHTML(order.admin_notes||"")+'</textarea></label><button type="button" class="copy-button save-order-button" data-save-order="'+escapeHTML(order.id)+'">Simpan perubahan</button></div>':"";
-  return '<article class="order-card"><div class="order-card-head"><strong>'+escapeHTML(order.order_number)+'</strong><span class="order-status">'+escapeHTML(statusLabels[order.status]||order.status)+'</span></div>'+customerInfo+'<p class="order-meta">'+escapeHTML(order.package_name||"Layanan custom")+' · '+escapeHTML(order.platform||"-")+'</p><p class="order-meta">Dikirim: '+escapeHTML(formatDate(order.submitted_at))+'</p><p class="order-brief">'+escapeHTML(String(order.brief??"").replace(/\\n/g,"\n").replace(/\r\n/g,"\n"))+'</p>'+quote+note+controls+'</article>';
+  return '<article class="order-card"><div class="order-card-head"><strong>'+escapeHTML(order.order_number)+'</strong><span class="order-status">'+escapeHTML(statusLabels[order.status]||order.status)+'</span></div>'+customerInfo+'<p class="order-meta">'+escapeHTML(order.package_name||"Layanan custom")+' · '+escapeHTML(order.platform||"-")+'</p><p class="order-meta">Dikirim: '+escapeHTML(formatDate(order.submitted_at))+'</p><p class="order-brief">'+escapeHTML(String(order.brief??"").replace(/\\n/g,"\n").replace(/\r\n/g,"\n"))+'</p>'+quote+note+paymentAction+controls+'</article>';
  }).join("");
+ if(!isAdmin) ordersList.querySelectorAll("[data-pay-order]").forEach(button=>button.addEventListener("click",async()=>{
+  const orderId=button.dataset.payOrder;
+  button.disabled=true;
+  button.textContent="Menyiapkan pembayaran...";
+  const {data,error}=await supabaseClient.functions.invoke("midtrans-create-payment",{body:{order_id:orderId}});
+  if(error||!data?.payment_url){
+    button.disabled=false;
+    button.innerHTML='Bayar via Midtrans <span>↗</span>';
+    const detail=data?.error||error?.message||"Silakan coba kembali atau hubungi admin SOSVANTA.";
+    alert("Belum dapat membuat pembayaran: "+detail);
+    return;
+  }
+  let paymentUrl;
+  try{paymentUrl=new URL(data.payment_url);}catch{paymentUrl=null;}
+  const allowedHosts=["app.sandbox.midtrans.com","app.midtrans.com"];
+  if(!paymentUrl||paymentUrl.protocol!=="https:"||!allowedHosts.includes(paymentUrl.hostname)){
+    button.disabled=false;
+    button.innerHTML='Bayar via Midtrans <span>↗</span>';
+    alert("Alamat pembayaran tidak valid. Hubungi admin SOSVANTA.");
+    return;
+  }
+  window.location.assign(paymentUrl.href);
+ }));
  if(isAdmin) ordersList.querySelectorAll("[data-save-order]").forEach(button=>button.addEventListener("click",async()=>{
   const id=button.dataset.saveOrder;
   const select=ordersList.querySelector('[data-order="'+id+'"]');
