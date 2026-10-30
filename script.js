@@ -96,12 +96,18 @@ async function refreshOrders(){
  const {data:orders,error}=await supabaseClient.from("orders").select("id,order_number,customer_id,package_name,platform,brand_name,customer_name,customer_phone,brief,status,submitted_at,admin_notes,quoted_amount,currency").order("created_at",{ascending:false}).limit(100);
  if(error){ordersList.textContent="Gagal memuat pesanan: "+error.message;return;}
  if(!orders?.length){ordersList.innerHTML='<p class="empty-orders">Belum ada pesanan. Isi formulir di bawah untuk memulai.</p>';return;}
+ let pendingPaymentsByOrder={};
+ if(isAdmin){
+  const {data:paymentRows}=await supabaseClient.from("payments").select("id,order_id,provider_order_id,status,amount").eq("provider","midtrans").in("order_id",orders.map(o=>o.id));
+  for(const p of paymentRows||[]){(pendingPaymentsByOrder[p.order_id]??=[]).push(p);}
+ }
  ordersList.innerHTML=orders.map(order=>{
   const customerInfo=isAdmin?'<p class="order-meta">Pelanggan: '+escapeHTML(order.customer_name)+'</p>':"";
   const quote=!isAdmin&&order.quoted_amount!==null&&order.quoted_amount!==undefined?'<p class="order-quote"><b>Penawaran SOSVANTA:</b> '+new Intl.NumberFormat("id-ID",{style:"currency",currency:order.currency||"IDR",maximumFractionDigits:0}).format(Number(order.quoted_amount))+(order.status==="awaiting_payment"?" · Menunggu pembayaran":"")+"</p>":"";
   const note=!isAdmin&&order.admin_notes?'<p class="order-admin-note"><b>Catatan SOSVANTA:</b> '+escapeHTML(order.admin_notes)+'</p>':"";
   const paymentAction=!isAdmin&&order.status==="awaiting_payment"?'<div class="customer-payment-action"><button type="button" class="button button-primary customer-pay-button" data-pay-order="'+escapeHTML(order.id)+'">Bayar via Midtrans <span>↗</span></button><p class="payment-hint">Pembayaran akan dibuka melalui halaman aman Midtrans.</p></div>':"";
-  const controls=isAdmin?'<div class="admin-order-controls"><label>Status<select class="order-status-select" data-order="'+escapeHTML(order.id)+'">'+adminStatuses.map(s=>'<option value="'+s+'" '+(order.status===s?"selected":"")+'>'+statusLabels[s]+'</option>').join("")+'</select></label><label>Nominal penawaran (Rupiah)<input class="admin-quote-input" data-quote="'+escapeHTML(order.id)+'" type="number" min="1" step="1" inputmode="numeric" placeholder="Contoh: 1490000" value="'+(order.quoted_amount??"")+'"></label><label>Catatan admin<textarea class="admin-note-input" data-note="'+escapeHTML(order.id)+'" rows="2">'+escapeHTML(order.admin_notes||"")+'</textarea></label><button type="button" class="copy-button save-order-button" data-save-order="'+escapeHTML(order.id)+'">Simpan perubahan</button><button type="button" class="copy-button reconcile-payment-button" data-reconcile-order="'+escapeHTML(order.id)+'">Rekonsiliasi pembayaran Midtrans</button></div>':"";
+  const individualChecks=isAdmin?(pendingPaymentsByOrder[order.id]||[]).filter(p=>p.status==="pending").map(p=>'<button type="button" class="copy-button check-single-payment-button" data-check-payment="'+escapeHTML(p.id)+'">Periksa transaksi '+escapeHTML(p.provider_order_id||p.id)+'</button>').join(""):"";
+  const controls=isAdmin?'<div class="admin-order-controls"><label>Status<select class="order-status-select" data-order="'+escapeHTML(order.id)+'">'+adminStatuses.map(s=>'<option value="'+s+'" '+(order.status===s?"selected":"")+'>'+statusLabels[s]+'</option>').join("")+'</select></label><label>Nominal penawaran (Rupiah)<input class="admin-quote-input" data-quote="'+escapeHTML(order.id)+'" type="number" min="1" step="1" inputmode="numeric" placeholder="Contoh: 1490000" value="'+(order.quoted_amount??"")+'"></label><label>Catatan admin<textarea class="admin-note-input" data-note="'+escapeHTML(order.id)+'" rows="2">'+escapeHTML(order.admin_notes||"")+'</textarea></label><button type="button" class="copy-button save-order-button" data-save-order="'+escapeHTML(order.id)+'">Simpan perubahan</button><button type="button" class="copy-button reconcile-payment-button" data-reconcile-order="'+escapeHTML(order.id)+'">Rekonsiliasi pembayaran Midtrans (semua transaksi)</button>'+individualChecks+'</div>':"";
   return '<article class="order-card"><div class="order-card-head"><strong>'+escapeHTML(order.order_number)+'</strong><span class="order-status">'+escapeHTML(statusLabels[order.status]||order.status)+'</span></div>'+customerInfo+'<p class="order-meta">'+escapeHTML(order.package_name||"Layanan custom")+' · '+escapeHTML(order.platform||"-")+'</p><p class="order-meta">Dikirim: '+escapeHTML(formatDate(order.submitted_at))+'</p><p class="order-brief">'+escapeHTML(String(order.brief??"").replace(/\\n/g,"\n").replace(/\r\n/g,"\n"))+'</p>'+quote+note+paymentAction+controls+'</article>';
  }).join("");
  if(!isAdmin) ordersList.querySelectorAll("[data-pay-order]").forEach(button=>button.addEventListener("click",async()=>{
@@ -127,6 +133,17 @@ async function refreshOrders(){
   }
   window.location.assign(paymentUrl.href);
  }));
+ if(isAdmin) ordersList.querySelectorAll("[data-check-payment]").forEach(button=>button.addEventListener("click",async()=>{
+  const paymentId=button.dataset.checkPayment;
+  if(!confirm("Periksa hanya transaksi ini melalui Midtrans? Transaksi lain pada pesanan tidak akan diubah.")) return;
+  button.disabled=true;
+  button.textContent="Memeriksa transaksi...";
+  const {data,error}=await supabaseClient.functions.invoke("midtrans-check-payment",{body:{payment_id:paymentId}});
+  button.disabled=false;
+  if(error||!data){alert("Pemeriksaan gagal: "+(data?.error||error?.message||"Kesalahan tidak diketahui"));await refreshOrders();return;}
+  alert("Hasil pemeriksaan transaksi:\n"+data.provider_order_id+"\nStatus Midtrans: "+data.result+"\n"+(data.message||""));
+  await refreshOrders();
+ }));
  if(isAdmin) ordersList.querySelectorAll("[data-reconcile-order]").forEach(button=>button.addEventListener("click",async()=>{
   const orderId=button.dataset.reconcileOrder;
   if(!confirm("Periksa status seluruh transaksi Midtrans untuk pesanan ini langsung ke Midtrans?")) return;
@@ -134,10 +151,10 @@ async function refreshOrders(){
   button.textContent="Memeriksa Midtrans...";
   const {data,error}=await supabaseClient.functions.invoke("midtrans-reconcile-payments",{body:{order_id:orderId}});
   button.disabled=false;
-  button.textContent="Rekonsiliasi pembayaran Midtrans";
+  button.textContent="Rekonsiliasi pembayaran Midtrans (semua transaksi)";
   if(error||!data){alert("Rekonsiliasi gagal: "+(data?.error||error?.message||"Kesalahan tidak diketahui"));return;}
-  const lines=(data.results||[]).map(item=>item.provider_order_id+": "+item.result).join("\\n");
-  alert("Hasil pemeriksaan Midtrans:\\n"+lines+"\\nTransaksi Settlement: "+data.settled_count+"\\nStatus pesanan: "+data.order_status);
+  const lines=(data.results||[]).map(item=>item.provider_order_id+": "+item.result).join("\n");
+  alert("Hasil pemeriksaan Midtrans:\n"+lines+"\nTransaksi Settlement: "+data.settled_count+"\nStatus pesanan: "+data.order_status);
   await refreshOrders();
  }));
  if(isAdmin) ordersList.querySelectorAll("[data-save-order]").forEach(button=>button.addEventListener("click",async()=>{
