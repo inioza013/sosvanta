@@ -52,15 +52,17 @@ async function saveOrder(id,button){
  const raw=$('orders').querySelector('[data-quote="'+id+'"]').value.trim();
  const quote=raw===""?null:Number(raw),note=$('orders').querySelector('[data-note="'+id+'"]').value.trim();
  if(raw!==""&&(!Number.isSafeInteger(quote)||quote<1)){alert("Nominal penawaran harus berupa angka Rupiah bulat lebih dari 0.");return}
- if(status==="awaiting_payment"&&(!Number.isSafeInteger(quote)||quote<1)){alert("Masukkan nominal penawaran sebelum mengirim instruksi pembayaran.");return}
- if(status==="paid"&&old.status!=="paid"){alert("Status pembayaran tidak dapat ditetapkan manual. Gunakan pemeriksaan Midtrans.");return}
- if(status==="paid")return;
+ if(old.status!=="paid"&&status==="awaiting_payment"&&(!Number.isSafeInteger(quote)||quote<1)){alert("Masukkan nominal penawaran sebelum mengirim instruksi pembayaran.");return}
+ if(old.status!=="paid"&&status==="paid"){alert("Status pembayaran tidak dapat ditetapkan manual. Gunakan pemeriksaan Midtrans.");return}
  button.disabled=true;button.textContent="Menyimpan...";
- const safeStatus=old.status==="paid"?"paid":status;\n const {error}=await db.from("orders").update({status:safeStatus,quoted_amount:quote,admin_notes:note}).eq("id",id);
+ const safeStatus=old.status==="paid"?"paid":status;
+ const safeQuote=old.status==="paid"?old.quoted_amount:quote;
+ const {error}=await db.from("orders").update({status:safeStatus,quoted_amount:safeQuote,admin_notes:note}).eq("id",id);
  if(error){button.disabled=false;button.textContent="Simpan perubahan";alert("Gagal menyimpan: "+error.message);return}
- if(status!==old.status||note!==old.admin_notes){
-  const eventMessage=note!==old.admin_notes?note:"Status diperbarui menjadi "+labels[status];
-  const {error:eventError}=await db.from("order_events").insert({order_id:id,actor_id:user.id,old_status:old.status,new_status:status,message:eventMessage,is_customer_visible:true});
+ const quoteChanged=String(safeQuote??"")!==String(old.quoted_amount??"");
+ if(safeStatus!==old.status||note!==old.admin_notes||quoteChanged){
+  const eventMessage=note!==old.admin_notes?note:(quoteChanged?"Penawaran diperbarui menjadi "+money(safeQuote):"Status diperbarui menjadi "+labels[safeStatus]);
+  const {error:eventError}=await db.from("order_events").insert({order_id:id,actor_id:user.id,old_status:old.status,new_status:safeStatus,message:eventMessage,is_customer_visible:true});
   if(eventError)alert("Perubahan pesanan tersimpan, tetapi catatan riwayat gagal ditambahkan: "+eventError.message);
  }
  await loadOrders();
