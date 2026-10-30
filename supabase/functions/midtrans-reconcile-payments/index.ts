@@ -48,8 +48,27 @@ Deno.serve(async (req) => {
     if (!response.ok) { results.push({ provider_order_id: payment.provider_order_id, result: "provider_error", http_status: response.status }); continue; }
     const current = await response.json();
     const amount = Number(current.gross_amount);
-    if (String(current.order_id ?? "") !== payment.provider_order_id || !Number.isFinite(amount) || amount !== Number(payment.amount)) {
-      results.push({ provider_order_id: payment.provider_order_id, result: "mismatch" }); continue;
+    const actualOrderId = String(current.order_id ?? "");
+    const expectedAmount = Number(payment.amount);
+    const mismatchReasons: string[] = [];
+    if (actualOrderId !== payment.provider_order_id) mismatchReasons.push("order_id_mismatch");
+    if (!Number.isFinite(amount)) mismatchReasons.push("invalid_midtrans_amount");
+    else if (amount !== expectedAmount) mismatchReasons.push("amount_mismatch");
+    if (mismatchReasons.length > 0) {
+      results.push({
+        provider_order_id: payment.provider_order_id,
+        result: "mismatch",
+        mismatch_reasons: mismatchReasons,
+        expected: { order_id: payment.provider_order_id, amount: expectedAmount },
+        received: {
+          order_id: actualOrderId || null,
+          amount: Number.isFinite(amount) ? amount : (current.gross_amount ?? null),
+          transaction_status: current.transaction_status ?? null,
+          status_code: current.status_code ?? null,
+          transaction_id: current.transaction_id ?? null,
+        },
+      });
+      continue;
     }
     const tx = String(current.transaction_status ?? "");
     const fraud = String(current.fraud_status ?? "");
