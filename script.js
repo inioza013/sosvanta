@@ -185,14 +185,6 @@ async function refreshOrders(silent=false){
   button.textContent="Menyimpan...";
   const {error:updateError}=await supabaseClient.from("orders").update({status:next,quoted_amount:quoteAmount,admin_notes:note.value.trim()}).eq("id",id);
   if(updateError){button.disabled=false;button.textContent="Simpan perubahan";alert("Gagal memperbarui: "+updateError.message);return;}
-  const quoteChanged=Number(old.quoted_amount??0)!==Number(quoteAmount??0);
-  if(old.status!==next||quoteChanged){
-    const messages=[];
-    if(old.status!==next) messages.push("Status diperbarui menjadi: "+statusLabels[next]);
-    if(quoteChanged) messages.push("Nominal penawaran diperbarui: "+(quoteAmount===null?"dihapus":new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(quoteAmount)));
-    const {error:eventError}=await supabaseClient.from("order_events").insert({order_id:id,actor_id:currentUser.id,old_status:old.status,new_status:next,message:messages.join(". "),is_customer_visible:true});
-    if(eventError) alert("Perubahan tersimpan, tetapi riwayat pesanan gagal dicatat: "+eventError.message);
-  }
   await refreshOrders();
  }));
 }
