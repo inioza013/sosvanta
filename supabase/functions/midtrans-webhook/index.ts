@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
   const fraudStatus = String(current.fraud_status ?? "");
   let nextPaymentStatus = "pending";
   let paid = false;
-  if ((transactionStatus === "settlement" || transactionStatus === "capture") &&
+  if (String(current.status_code ?? "") === "200" &&
+      (transactionStatus === "settlement" || transactionStatus === "capture") &&
       (!current.fraud_status || fraudStatus === "accept")) {
     nextPaymentStatus = "paid";
     paid = true;
@@ -67,9 +68,9 @@ Deno.serve(async (req) => {
 
   const { error: updatePaymentError } = await admin.from("payments").update({
     status: nextPaymentStatus,
-    provider_reference: String(current.transaction_id ?? ""),
-    payment_method: String(current.payment_type ?? ""),
-    paid_at: paid ? (current.settlement_time || new Date().toISOString()) : null,
+    provider_reference: current.transaction_id ? String(current.transaction_id) : null,
+    payment_method: current.payment_type ? String(current.payment_type) : null,
+    ...(paid ? { paid_at: current.settlement_time || new Date().toISOString() } : {}),
     raw_notification: notification,
   }).eq("id", payment.id);
   if (updatePaymentError) return json({ error: "Could not update payment" }, 500);
