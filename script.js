@@ -93,21 +93,39 @@ async function refreshOrders(){
  const isAdmin=profile.role==="admin";
  dashboardRole.textContent=isAdmin?"ADMIN":"PELANGGAN";
  dashboardIntro.textContent=isAdmin?"Pantau seluruh pesanan pelanggan dan perbarui status pengerjaan.":"Berikut riwayat dan perkembangan pesanan Anda.";
- const {data:orders,error}=await supabaseClient.from("orders").select("id,order_number,customer_id,package_name,platform,brand_name,customer_name,customer_phone,brief,status,submitted_at,admin_notes").order("created_at",{ascending:false}).limit(100);
+ const {data:orders,error}=await supabaseClient.from("orders").select("id,order_number,customer_id,package_name,platform,brand_name,customer_name,customer_phone,brief,status,submitted_at,admin_notes,quoted_amount,currency").order("created_at",{ascending:false}).limit(100);
  if(error){ordersList.textContent="Gagal memuat pesanan: "+error.message;return;}
  if(!orders?.length){ordersList.innerHTML='<p class="empty-orders">Belum ada pesanan. Isi formulir di bawah untuk memulai.</p>';return;}
  ordersList.innerHTML=orders.map(order=>{
   const customerInfo=isAdmin?'<p class="order-meta">Pelanggan: '+escapeHTML(order.customer_name)+'</p>':"";
+  const quote=!isAdmin&&order.quoted_amount!==null&&order.quoted_amount!==undefined?'<p class="order-quote"><b>Penawaran SOSVANTA:</b> '+new Intl.NumberFormat("id-ID",{style:"currency",currency:order.currency||"IDR",maximumFractionDigits:0}).format(Number(order.quoted_amount))+(order.status==="awaiting_payment"?" · Menunggu pembayaran":"")+"</p>":"";
   const note=!isAdmin&&order.admin_notes?'<p class="order-admin-note"><b>Catatan SOSVANTA:</b> '+escapeHTML(order.admin_notes)+'</p>':"";
-  const controls=isAdmin?'<div class="admin-order-controls"><label>Status<select class="order-status-select" data-order="'+escapeHTML(order.id)+'">'+adminStatuses.map(s=>'<option value="'+s+'" '+(order.status===s?"selected":"")+'>'+statusLabels[s]+'</option>').join("")+'</select></label><label>Catatan admin<textarea class="admin-note-input" data-note="'+escapeHTML(order.id)+'" rows="2">'+escapeHTML(order.admin_notes||"")+'</textarea></label><button type="button" class="copy-button save-order-button" data-save-order="'+escapeHTML(order.id)+'">Simpan perubahan</button></div>':"";
-  return '<article class="order-card"><div class="order-card-head"><strong>'+escapeHTML(order.order_number)+'</strong><span class="order-status">'+escapeHTML(statusLabels[order.status]||order.status)+'</span></div>'+customerInfo+'<p class="order-meta">'+escapeHTML(order.package_name||"Layanan custom")+' · '+escapeHTML(order.platform||"-")+'</p><p class="order-meta">Dikirim: '+escapeHTML(formatDate(order.submitted_at))+'</p><p class="order-brief">'+escapeHTML(String(order.brief??"").replace(/\\n/g,"\n").replace(/\r\n/g,"\n"))+'</p>'+note+controls+'</article>';
+  const controls=isAdmin?'<div class="admin-order-controls"><label>Status<select class="order-status-select" data-order="'+escapeHTML(order.id)+'">'+adminStatuses.map(s=>'<option value="'+s+'" '+(order.status===s?"selected":"")+'>'+statusLabels[s]+'</option>').join("")+'</select></label><label>Nominal penawaran (Rupiah)<input class="admin-quote-input" data-quote="'+escapeHTML(order.id)+'" type="number" min="1" step="1" inputmode="numeric" placeholder="Contoh: 1490000" value="'+(order.quoted_amount??"")+'"></label><label>Catatan admin<textarea class="admin-note-input" data-note="'+escapeHTML(order.id)+'" rows="2">'+escapeHTML(order.admin_notes||"")+'</textarea></label><button type="button" class="copy-button save-order-button" data-save-order="'+escapeHTML(order.id)+'">Simpan perubahan</button></div>':"";
+  return '<article class="order-card"><div class="order-card-head"><strong>'+escapeHTML(order.order_number)+'</strong><span class="order-status">'+escapeHTML(statusLabels[order.status]||order.status)+'</span></div>'+customerInfo+'<p class="order-meta">'+escapeHTML(order.package_name||"Layanan custom")+' · '+escapeHTML(order.platform||"-")+'</p><p class="order-meta">Dikirim: '+escapeHTML(formatDate(order.submitted_at))+'</p><p class="order-brief">'+escapeHTML(String(order.brief??"").replace(/\\n/g,"\n").replace(/\r\n/g,"\n"))+'</p>'+quote+note+controls+'</article>';
  }).join("");
  if(isAdmin) ordersList.querySelectorAll("[data-save-order]").forEach(button=>button.addEventListener("click",async()=>{
-  const id=button.dataset.saveOrder;const select=ordersList.querySelector('[data-order="'+id+'"]');const note=ordersList.querySelector('[data-note="'+id+'"]');const old=orders.find(o=>o.id===id);const next=select.value;
-  button.disabled=true;button.textContent="Menyimpan...";
-  const {error:updateError}=await supabaseClient.from("orders").update({status:next,admin_notes:note.value.trim()}).eq("id",id);
+  const id=button.dataset.saveOrder;
+  const select=ordersList.querySelector('[data-order="'+id+'"]');
+  const quoteInput=ordersList.querySelector('[data-quote="'+id+'"]');
+  const note=ordersList.querySelector('[data-note="'+id+'"]');
+  const old=orders.find(o=>o.id===id);
+  const next=select.value;
+  const rawQuote=quoteInput.value.trim();
+  const quoteAmount=rawQuote===""?null:Number(rawQuote);
+  if(rawQuote!==""&&(!Number.isSafeInteger(quoteAmount)||quoteAmount<1)){alert("Nominal penawaran harus berupa angka Rupiah bulat lebih dari 0.");return;}
+  if((next==="awaiting_payment"||next==="paid")&&(!Number.isSafeInteger(quoteAmount)||quoteAmount<1)){alert("Isi nominal penawaran terlebih dahulu sebelum mengubah status menjadi menunggu pembayaran atau pembayaran diterima.");quoteInput.focus();return;}
+  button.disabled=true;
+  button.textContent="Menyimpan...";
+  const {error:updateError}=await supabaseClient.from("orders").update({status:next,quoted_amount:quoteAmount,admin_notes:note.value.trim()}).eq("id",id);
   if(updateError){button.disabled=false;button.textContent="Simpan perubahan";alert("Gagal memperbarui: "+updateError.message);return;}
-  if(old.status!==next){const {error:eventError}=await supabaseClient.from("order_events").insert({order_id:id,actor_id:currentUser.id,old_status:old.status,new_status:next,message:"Status diperbarui menjadi: "+statusLabels[next],is_customer_visible:true});if(eventError) alert("Status tersimpan, tetapi riwayat status gagal dicatat: "+eventError.message);}
+  const quoteChanged=Number(old.quoted_amount??0)!==Number(quoteAmount??0);
+  if(old.status!==next||quoteChanged){
+    const messages=[];
+    if(old.status!==next) messages.push("Status diperbarui menjadi: "+statusLabels[next]);
+    if(quoteChanged) messages.push("Nominal penawaran diperbarui: "+(quoteAmount===null?"dihapus":new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(quoteAmount)));
+    const {error:eventError}=await supabaseClient.from("order_events").insert({order_id:id,actor_id:currentUser.id,old_status:old.status,new_status:next,message:messages.join(". "),is_customer_visible:true});
+    if(eventError) alert("Perubahan tersimpan, tetapi riwayat pesanan gagal dicatat: "+eventError.message);
+  }
   await refreshOrders();
  }));
 }
