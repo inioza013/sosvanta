@@ -1,0 +1,5 @@
+[functions.midtrans-create-payment]
+verify_jwt = false
+
+[functions.midtrans-webhook]
+verify_jwt = false
