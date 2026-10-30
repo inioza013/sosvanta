@@ -41,3 +41,10 @@
 .admin-order-controls label{font-size:10px;font-weight:700;color:#3c5445}
 .admin-order-controls select,.admin-order-controls textarea,.admin-order-controls input{display:block;width:100%;margin-top:5px;border:1px solid #dce5de;background:#fbfcfb;padding:9px;font:11px "DM Sans";color:#24392c;border-radius:3px}.admin-order-controls input{box-sizing:border-box}.order-quote{font-size:11px;line-height:1.6;color:#285b42;background:#eef7f0;padding:9px;margin:8px 0}
 @media(max-width:620px){.order-dashboard{padding:13px}.dashboard-top{align-items:center}.order-card{padding:12px}}
+
+
+/* Midtrans customer payment action */
+.customer-payment-action{margin:12px 0;padding:12px;background:#f0f8f2;border:1px solid #d4e8d9;border-radius:4px}
+.customer-pay-button{width:100%;max-width:280px}
+.payment-hint{font-size:10px;line-height:1.5;color:#718078;margin:8px 0 0}
+.customer-pay-button:disabled{opacity:.65;cursor:wait}
