@@ -59,6 +59,8 @@ Deno.serve(async (req) => {
     else if (tx === "cancel") next = "cancelled";
     else if (tx === "deny" || tx === "failure") next = "failed";
     else if (tx === "refund" || tx === "partial_refund") next = "refunded";
+    // Preserve confirmed settlement if a stale/non-terminal response arrives later.
+    if (payment.status === "paid" && !["paid", "refunded"].includes(next)) next = "paid";
     const update: Record<string, unknown> = {
       status: next,
       raw_notification: { _reconciled_by: "midtrans-status-api", transaction_status: tx, status_code: current.status_code, transaction_id: current.transaction_id ?? null, payment_type: current.payment_type ?? null },
