@@ -27,9 +27,10 @@ Use two separate customer accounts (A and B) and one admin account.
 8. Rejected deposit creates no credit entry.
 9. Customer A can see their own updated balance and transaction history.
 10. A wallet payment with insufficient funds fails and creates no debit/payment record.
-11. A valid wallet payment deducts exactly the quoted IDR amount and changes the order to paid.
-12. Repeating payment for the same order is rejected; a customer cannot mark an order paid directly.
-13. Confirm logout, session expiry, mobile layout, and browser console/network errors.
+11. Wallet checkout is blocked if the order has a pending or already-paid Midtrans transaction; verify that this prevents a second payment path.
+12. A valid wallet payment deducts exactly the quoted IDR amount and changes the order to paid.
+13. Repeating payment for the same order is rejected; a customer cannot mark an order paid directly.
+14. Confirm logout, session expiry, mobile layout, and browser console/network errors.
 
 ## Known limitations
 - No automated browser or live Supabase end-to-end tests have been run from this repository review.
