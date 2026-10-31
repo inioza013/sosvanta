@@ -65,16 +65,19 @@ Deno.serve(async (req) => {
   if (reusable) return json({ payment_url: reusable.redirect_url, order_number: order.order_number, reused: true });
   if (existingPayments?.some((p) => p.status === "pending")) return json({ error: "Tagihan sebelumnya masih diproses. Hubungi admin untuk pemeriksaan." }, 409);
 
+  // Atomically reserve the order against Wallet checkout. The database RPC
+  // locks the orders row shared with pay_order_with_wallet().
   const providerOrderId = "SV-" + crypto.randomUUID();
-  const { data: payment, error: paymentError } = await admin.from("payments").insert({
-    order_id: order.id,
-    provider: "midtrans",
-    provider_order_id: providerOrderId,
-    amount,
-    currency: "IDR",
-    status: "pending",
-  }).select("id").single();
-  if (paymentError || !payment) return json({ error: "Tidak dapat menyiapkan catatan pembayaran." }, 500);
+  const { data: paymentId, error: paymentError } = await admin.rpc("reserve_midtrans_payment", {
+    p_order_id: order.id,
+    p_provider_order_id: providerOrderId,
+  });
+  if (paymentError || !paymentId) {
+    console.error("Midtrans reservation failed", paymentError?.message ?? "No payment id returned");
+    return json({
+      error: paymentError?.message || "Tidak dapat menyiapkan catatan pembayaran.",
+    }, 409);
+  }
 
   const endpoint = production
     ? "https://app.midtrans.com/snap/v1/transactions"
@@ -117,7 +120,7 @@ Deno.serve(async (req) => {
       provider_status_message: snap.status_message ?? null,
       provider_response: snap,
     });
-    await admin.from("payments").delete().eq("id", payment.id);
+    await admin.from("payments").delete().eq("id", paymentId);
     const providerMessage = typeof snap.status_message === "string"
       ? snap.status_message
       : "Midtrans tidak mengembalikan token dan redirect URL.";
@@ -132,7 +135,7 @@ Deno.serve(async (req) => {
   const { error: saveError } = await admin.from("payments").update({
     snap_token: snap.token,
     redirect_url: snap.redirect_url,
-  }).eq("id", payment.id);
+  }).eq("id", paymentId);
   if (saveError) return json({ error: "Tagihan dibuat tetapi gagal disimpan. Hubungi admin." }, 500);
 
   return json({ payment_url: snap.redirect_url, snap_token: snap.token, order_number: order.order_number });
