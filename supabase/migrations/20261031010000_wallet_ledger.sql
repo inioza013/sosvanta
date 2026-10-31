@@ -60,9 +60,9 @@ drop policy if exists wallet_deposit_read_own_admin on public.wallet_deposit_req
 create policy wallet_deposit_read_own_admin on public.wallet_deposit_requests
 for select to authenticated using (customer_id = (select auth.uid()) or public.is_admin());
 
+-- No direct update policy: approvals must go through review_wallet_deposit()
+-- so status changes and ledger credits happen atomically.
 drop policy if exists wallet_deposit_admin_update on public.wallet_deposit_requests;
-create policy wallet_deposit_admin_update on public.wallet_deposit_requests
-for update to authenticated using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists wallet_tx_read_own_admin on public.wallet_transactions;
 create policy wallet_tx_read_own_admin on public.wallet_transactions
@@ -74,11 +74,20 @@ for select to authenticated using (customer_id = (select auth.uid()) or public.i
 create or replace function public.wallet_balance(p_customer_id uuid)
 returns numeric
 language sql stable security definer set search_path = ''
-as $$
-  select coalesce(sum(case when direction = 'credit' then amount else -amount end), 0)::numeric(14,2)
-  from public.wallet_transactions
-  where customer_id = p_customer_id;
-$$;
+as $
+begin
+  if auth.uid() is null or (
+    auth.uid() <> p_customer_id and not public.is_admin()
+  ) then
+    raise exception 'Tidak berwenang melihat saldo ini.';
+  end if;
+  return (
+    select coalesce(sum(case when direction = 'credit' then amount else -amount end), 0)::numeric(14,2)
+    from public.wallet_transactions
+    where customer_id = p_customer_id
+  );
+end;
+$;
 
 create or replace function public.request_wallet_deposit(p_amount numeric, p_reference text default null)
 returns uuid
@@ -187,6 +196,7 @@ begin
        or exists (select 1 from public.payments p
                   join public.wallet_transactions wt on wt.order_id = p.order_id
                   where p.order_id = new.id and p.provider = 'manual' and p.status = 'paid'
+                    and wt.customer_id = new.customer_id
                     and wt.transaction_type = 'order_payment' and wt.direction = 'debit'
                     and wt.amount = p.amount and p.amount = new.quoted_amount)
      ) then
