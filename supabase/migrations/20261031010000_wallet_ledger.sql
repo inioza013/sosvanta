@@ -73,8 +73,8 @@ for select to authenticated using (customer_id = (select auth.uid()) or public.i
 
 create or replace function public.wallet_balance(p_customer_id uuid)
 returns numeric
-language sql stable security definer set search_path = ''
-as $
+language plpgsql stable security definer set search_path = public
+as $$
 begin
   if auth.uid() is null or (
     auth.uid() <> p_customer_id and not public.is_admin()
@@ -87,7 +87,7 @@ begin
     where customer_id = p_customer_id
   );
 end;
-$;
+$$;
 
 create or replace function public.request_wallet_deposit(p_amount numeric, p_reference text default null)
 returns uuid
