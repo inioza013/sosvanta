@@ -15,7 +15,11 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const serverKey = Deno.env.get("MIDTRANS_SERVER_KEY");
   const production = Deno.env.get("MIDTRANS_IS_PRODUCTION") === "true";
-  if (!supabaseUrl || !serviceKey || !serverKey) return json({ error: "Backend configuration missing" }, 503);
+  if (!supabaseUrl || !serviceKey) return json({ error: "Backend configuration missing" }, 503);
+  if (!serverKey) {
+    console.error("midtrans-webhook: MIDTRANS_SERVER_KEY is not configured");
+    return json({ error: "Payment provider configuration missing", code: "server_key_missing" }, 503);
+  }
 
   let notification: Record<string, unknown>;
   try { notification = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
@@ -25,8 +29,23 @@ Deno.serve(async (req) => {
   const signature = String(notification.signature_key ?? "");
   if (!orderId || !statusCode || !grossAmount || !signature) return json({ error: "Incomplete notification" }, 400);
 
+  // Midtrans signs the exact gross_amount string from the notification; do not parse/reformat it.
   const expected = await sha512(orderId + statusCode + grossAmount + serverKey);
-  if (expected !== signature.toLowerCase()) return json({ error: "Invalid signature" }, 401);
+  const receivedSignature = signature.toLowerCase();
+  if (expected !== receivedSignature) {
+    // Safe diagnostics only: never log the Server Key, supplied signature, or computed signature.
+    console.error("midtrans-webhook: signature mismatch", {
+      orderId,
+      statusCode,
+      grossAmount,
+      receivedSignatureLength: signature.length,
+      receivedSignatureIsHexSha512: /^[a-f0-9]{128}$/i.test(signature),
+      serverKeyLength: serverKey.length,
+      serverKeyHasSandboxPrefix: serverKey.startsWith("SB-Mid-server-"),
+      serverKeyHasProductionPrefix: serverKey.startsWith("Mid-server-"),
+    });
+    return json({ error: "Invalid signature", code: "signature_mismatch" }, 401);
+  }
 
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
