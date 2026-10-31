@@ -18,6 +18,11 @@ This stage uses no paid gateway, supplier API, or external service. A deposit re
 
 This is a database migration only. It has NOT been applied to the live Supabase project by this repository commit.
 
+## Current UI status
+- Customer wallet interface is present in `panel.html` and `wallet.js`.
+- Admin deposit review interface is present in `admin.html` and `wallet-admin.js`; the UI checks `profiles.role = admin`, while the database RPC independently enforces admin authorization.
+- The UI does not initiate a bank transfer or add funds automatically.
+
 ## Manual verification checklist
 - Customer A can request a deposit; Customer B cannot read A's requests or ledger.
 - Customer cannot insert/update/delete wallet ledger rows directly.
@@ -32,4 +37,4 @@ This is a database migration only. It has NOT been applied to the live Supabase 
 - A pending deposit request must never be approved until the actual incoming funds are independently confirmed.
 
 ## Important
-The customer/admin screens do not yet expose wallet balances or deposit review. That UI is the next stage. Existing Midtrans scaffold remains separate and un-deployed. Do not deploy or activate Midtrans for this free/manual wallet stage.
+The customer/admin screens are implemented in the development branch, but must not be treated as production-ready until the migration is applied and the manual verification checklist passes. The wallet UI is not deployed to `main`. Existing Midtrans scaffold remains separate and un-deployed. Do not deploy or activate Midtrans for this free/manual wallet stage.
