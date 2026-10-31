@@ -24,7 +24,24 @@ async function refreshOrders(){
  const rows=data||[];
  $("totalCount").textContent=rows.length;
  $("activeCount").textContent=rows.filter(o=>["submitted","under_review","quoted","awaiting_payment","paid","in_progress","revision"].includes(o.status)).length;
- $("orderList").innerHTML=rows.length?rows.map(o=>'<article class="order-card" data-order-id="'+escapeHtml(o.id)+'"><div class="order-top"><strong>'+escapeHtml(o.order_number)+'</strong><span class="pill">'+escapeHtml(statusLabels[o.status]||o.status)+'</span></div><p><b>'+escapeHtml(o.package_name||"Layanan custom")+'</b> · '+escapeHtml(o.platform||"-")+'</p><p>'+escapeHtml(o.brand_name||"")+' · '+new Date(o.submitted_at).toLocaleString("id-ID")+'</p><p>'+escapeHtml(o.brief||"")+'</p>'+(o.quoted_amount!=null?'<p><b>Penawaran: '+rupiah(o.quoted_amount)+'</b></p>':"")+(o.admin_notes?'<p>Catatan: '+escapeHtml(o.admin_notes)+'</p>':"")+'</article>').join(""):'<div class="empty">Belum ada pesanan. Pilih layanan dan kirim permintaan pertama Anda.</div>';
+ $("orderList").innerHTML=rows.length?rows.map(o=>'<article class="order-card" data-order-id="'+escapeHtml(o.id)+'" data-order-status="'+escapeHtml(o.status)+'"><div class="order-top"><strong>'+escapeHtml(o.order_number)+'</strong><span class="pill">'+escapeHtml(statusLabels[o.status]||o.status)+'</span></div><p><b>'+escapeHtml(o.package_name||"Layanan custom")+'</b> · '+escapeHtml(o.platform||"-")+'</p><p>'+escapeHtml(o.brand_name||"")+' · '+new Date(o.submitted_at).toLocaleString("id-ID")+'</p><p>'+escapeHtml(o.brief||"")+'</p>'+(o.quoted_amount!=null?'<p><b>Penawaran: '+rupiah(o.quoted_amount)+'</b></p>':"")+(o.admin_notes?'<p>Catatan: '+escapeHtml(o.admin_notes)+'</p>':"")+'</article>').join(""):'<div class="empty">Belum ada pesanan. Pilih layanan dan kirim permintaan pertama Anda.</div>';
+ document.querySelectorAll(".order-card[data-order-status='awaiting_payment']").forEach(card=>{
+  if(card.querySelector(".pay-midtrans"))return;
+  const btn=document.createElement("button");
+  btn.className="secondary pay-midtrans";
+  btn.type="button";
+  btn.textContent="Bayar dengan Midtrans";
+  btn.addEventListener("click",async()=>{
+   if(!confirm("Lanjutkan ke halaman pembayaran Midtrans Sandbox untuk pesanan ini?"))return;
+   btn.disabled=true;btn.textContent="Menyiapkan pembayaran...";
+   const {data,error}=await db.functions.invoke("midtrans-create-payment",{body:{order_id:card.dataset.orderId}});
+   btn.disabled=false;btn.textContent="Bayar dengan Midtrans";
+   if(error){alert("Tidak dapat membuat tagihan: "+error.message);return}
+   if(data?.payment_url){location.assign(data.payment_url);return}
+   alert(data?.error||"Midtrans belum mengembalikan tautan pembayaran.");
+  });
+  card.appendChild(btn);
+ });
 }
 async function setSession(session){
  currentUser=session?.user||null;
