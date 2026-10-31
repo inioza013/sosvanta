@@ -14,6 +14,14 @@ This checklist applies only to branch `safe-smm-panel-mvp`. The production `main
 ## Supabase migration prerequisites
 Before running the wallet migration, confirm that the base `supabase/schema.sql` and `20261030_midtrans_snap.sql` and `20261031000000_prevent_unverified_paid_orders.sql` have been applied in the intended Supabase project. Review the SQL in the dashboard first. Do not run it against a production project until the owner explicitly authorizes that action.
 
+
+## Midtrans–Wallet concurrency hardening
+- The Midtrans create-payment Edge Function now calls `reserve_midtrans_payment` instead of inserting a pending payment directly.
+- Migration `supabase/migrations/20261031020000_midtrans_wallet_reservation.sql` creates a service-role-only RPC that locks the same `orders` row used by `pay_order_with_wallet`.
+- The reservation rejects an order with a wallet ledger entry, any paid payment, or any pending payment before inserting the Midtrans pending row.
+- Apply this migration before deploying the updated `midtrans-create-payment` Edge Function. Do not deploy the function first: it will return an RPC error until the migration exists.
+- After both are deployed, test that wallet checkout and Midtrans reservation cannot both succeed for the same order. Use sandbox/test data only; do not use real funds.
+
 ## Manual end-to-end test plan
 Use two separate customer accounts (A and B) and one admin account.
 
@@ -34,9 +42,9 @@ Use two separate customer accounts (A and B) and one admin account.
 
 ## Known limitations
 - No automated browser or live Supabase end-to-end tests have been run from this repository review.
-- The wallet migration has not been applied to Supabase by these commits.
+- The wallet migration and append-only hardening were applied by the owner in Supabase production; this repository review does not independently inspect live database state.
 - No deposit, payment, bank connection, supplier API, or automated fulfillment is active.
-- Midtrans remains a separate integration and must not be activated without explicit approval and review of any fees.
+- The Midtrans–Wallet reservation migration and updated Edge Function are committed to the development branch only; they have not been applied/deployed to production by these commits.
 - GitHub Pages is static hosting; it does not run server-side code or apply database migrations.
 
 ## Release gate
