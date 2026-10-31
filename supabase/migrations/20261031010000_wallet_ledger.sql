@@ -153,6 +153,15 @@ begin
     raise exception 'Pesanan ini sudah pernah dibayar menggunakan saldo.';
   end if;
 
+  -- Avoid charging the same order twice while an external Midtrans transaction is pending.
+  if exists (
+    select 1 from public.payments
+    where order_id = v_order.id and provider = 'midtrans'
+      and status in ('pending','paid')
+  ) then
+    raise exception 'Pesanan memiliki transaksi Midtrans yang masih tertunda atau sudah dibayar. Periksa transaksi tersebut terlebih dahulu.';
+  end if;
+
   insert into public.wallet_accounts(customer_id) values (auth.uid()) on conflict do nothing;
   perform 1 from public.wallet_accounts where customer_id = auth.uid() for update;
   v_balance := public.wallet_balance(auth.uid());
