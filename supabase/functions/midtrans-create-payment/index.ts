@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   if (paymentError || !paymentId) {
     console.error("Midtrans reservation failed", paymentError?.message ?? "No payment id returned");
     return json({
-      error: paymentError?.message || "Tidak dapat menyiapkan catatan pembayaran.",
+      error: "Pesanan tidak dapat dikunci untuk pembayaran. Periksa status pesanan atau tagihan sebelumnya, lalu coba lagi.",
     }, 409);
   }
 
