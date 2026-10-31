@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
   });
   const { data: payment, error: paymentError } = await admin
     .from("payments")
-    .select("id,order_id,amount,status")
+    .select("id,order_id,amount,currency,status")
     .eq("provider", "midtrans")
     .eq("provider_order_id", orderId)
     .maybeSingle();
@@ -48,8 +48,13 @@ Deno.serve(async (req) => {
   if (!statusResponse.ok) return json({ error: "Could not verify transaction status with Midtrans" }, 503);
   const current = await statusResponse.json();
   const canonicalAmount = Number(current.gross_amount);
-  if (String(current.order_id ?? "") !== orderId || !Number.isFinite(canonicalAmount) || canonicalAmount !== Number(payment.amount)) {
-    return json({ error: "Payment amount mismatch" }, 409);
+  const canonicalCurrency = String(current.currency ?? "");
+  if (String(current.order_id ?? "") !== orderId ||
+      !Number.isFinite(canonicalAmount) ||
+      canonicalAmount !== Number(payment.amount) ||
+      canonicalCurrency !== "IDR" ||
+      payment.currency !== "IDR") {
+    return json({ error: "Payment amount or currency mismatch" }, 409);
   }
 
   const transactionStatus = String(current.transaction_status ?? "");
